@@ -13,9 +13,10 @@ import sys
 from pathlib import Path
 
 # Files that must already exist in the stock SDK (i.e. modifications).
-# Anything else in the overlay tree is treated as a new file.
+# Anything else in the overlay tree is treated as a new file (added).
+# CMakeLists.txt is generated via cdt2cmake and does NOT exist upstream
+# at the pinned SDK_REF — so it is not listed here.
 EXPECTED_EXISTING = {
-    "CMakeLists.txt",
     "apps/common/comm_cfg.h",
     "apps/zigbee/sampleGW/sampleGateway.c",
     "apps/zigbee/sampleGW/app_ui.c",
