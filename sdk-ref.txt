@@ -1,0 +1,4 @@
+# sdk-ref.txt — pinned upstream commit
+09fa2c3483b3aa2f0a6f2e2cc7e267cd6f1f9277
+# telink-semi/telink_zigbee_sdk, branch master tip at local clone time (2026-09-12).
+# Workflow default must match. Override via workflow_dispatch input `sdk_ref`.

@@ -1,0 +1,10 @@
+# Build outputs / local SDK checkout — never commit these.
+cmake_build/
+*.bin
+*.ybl
+*.elf
+*.lst
+*.map
+sdk/
+C:/telink-toolchain/
+__pycache__/
