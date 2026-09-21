@@ -1,4 +1,8 @@
-# sdk-ref.txt — pinned upstream commit
-09fa2c3483b3aa2f0a6f2e2cc7e267cd6f1f9277
-# telink-semi/telink_zigbee_sdk, branch master tip at local clone time (2026-09-12).
-# Workflow default must match. Override via workflow_dispatch input `sdk_ref`.
+# SDK pin for ZESP_Telink_coordinator overlay
+# This is the exact upstream commit the firmware is built against.
+# Update together with .github/workflows/build.yml env SDK_REF and tag below.
+SDK_URL=https://github.com/telink-semi/telink_zigbee_sdk
+SDK_REF=09fa2c3483b3aa2f0a6f2e2cc7e267cd6f1f9277
+SDK_REF_DESC=master tip at local clone time (2026-09-12), packed-refs origin/master
+# Nearby tags at that time: V3.7.1.2 (cb98b74), V3.7.1.2_Patch_0001 (e34335e)
+# Workflow default must match; override via workflow_dispatch input sdk_ref.

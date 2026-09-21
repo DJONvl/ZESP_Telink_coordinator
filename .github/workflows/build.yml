@@ -41,6 +41,14 @@ jobs:
           git clone "$SDK_URL" sdk
           cd sdk
           git checkout "$SDK_REF"
+          echo "SDK_REF=$SDK_REF" > ../sdk-version.txt
+          echo "SDK_URL=$SDK_URL" >> ../sdk-version.txt
+          git rev-parse HEAD >> ../sdk-version.txt
+          git log -1 --oneline >> ../sdk-version.txt
+          echo "--- sdk-version.txt ---"
+          cat ../sdk-version.txt
+          echo "--- sdk-ref.txt (repo pin) ---"
+          cat ../sdk-ref.txt || true
 
       - name: Apply overlay
         run: |
@@ -89,6 +97,8 @@ jobs:
             sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91.bin
             sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91_yandex2.ybl
             sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91.map
+            sdk-version.txt
+            sdk-ref.txt
 
       - name: Publish Release (tag v* or manual release=true)
         if: startsWith(github.ref, 'refs/tags/v') || inputs.release == true
@@ -98,5 +108,9 @@ jobs:
             sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91_yandex2.ybl
             sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91.bin
             sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91.map
+            sdk-version.txt
           generate_release_notes: true
           fail_on_unmatched_files: true
+          body: |
+            SDK: ${{ env.SDK_URL }} @ ${{ env.SDK_REF }}
+            See sdk-version.txt attached for exact commit.
