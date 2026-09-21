@@ -21,6 +21,7 @@ permissions:
 env:
   SDK_REF: ${{ inputs.sdk_ref || '09fa2c3483b3aa2f0a6f2e2cc7e267cd6f1f9277' }}
   SDK_URL: https://github.com/telink-semi/telink_zigbee_sdk
+  SDK_URL_FORK: https://github.com/DJONvl/telink_zigbee_sdk
   TOOLCHAIN_URL: https://github.com/andestech/Andes-Development-Kit/releases/download/ast-v3_2_3-release-linux/nds32le-elf-mculib-v5f.txz
   TOOLCHAIN_DIR: /opt/nds32le-elf-mculib-v5f
 
@@ -36,13 +37,22 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Clone upstream SDK at pinned ref
+      - name: Clone upstream SDK at pinned ref (with fork fallback)
         run: |
-          git clone "$SDK_URL" sdk
+          if ! git clone "$SDK_URL" sdk; then
+            echo "Upstream clone failed, falling back to fork $SDK_URL_FORK"
+            git clone "$SDK_URL_FORK" sdk
+          fi
           cd sdk
-          git checkout "$SDK_REF"
+          if ! git checkout "$SDK_REF" 2>/dev/null; then
+            echo "Ref $SDK_REF not in upstream checkout, trying fork fetch"
+            git remote add fork "$SDK_URL_FORK" 2>/dev/null || true
+            git fetch fork --depth 1 || git fetch fork
+            git checkout "$SDK_REF"
+          fi
           echo "SDK_REF=$SDK_REF" > ../sdk-version.txt
           echo "SDK_URL=$SDK_URL" >> ../sdk-version.txt
+          echo "SDK_URL_FORK=$SDK_URL_FORK" >> ../sdk-version.txt
           git rev-parse HEAD >> ../sdk-version.txt
           git log -1 --oneline >> ../sdk-version.txt
           echo "--- sdk-version.txt ---"
