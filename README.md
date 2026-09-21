@@ -36,32 +36,30 @@ sdk-ref.txt              зашитый коммит upstream SDK
 manufacturer-specific кластеров (`0x0901/0x8901/0x8902`), стабильный IEEE
 (фикс в `zb_ieee.c`, смена на лету командой `0x0903`).
 
-## Подготовка тулчейна (один раз, ~5 минут)
+## Сборка
 
-Компилятор `riscv32-elf-gcc 7.4.0 (nds32le-elf-mculib-v5f)` идёт только с
-Telink IoT Studio и жёстко требуется prebuilt-стеком (`libzb_coordinator.a`).
-В CI он берётся из Release-ассета **этого** репозитория (в git его не кладём).
+Локально и в CI собирается одинаково на **Linux** (`ubuntu-latest`). Тулчейн
+`riscv32-elf-gcc 7.4.0 (nds32le-elf-mculib-v5f)` жёстко требуется prebuilt-стеком
+(`libzb_coordinator.a`). В CI он берётся напрямую с релиза Andes
+(`ast-v3_2_3-release-linux`, он же Telink RDS V3.2.3) — ничего грузить в релизы
+своего репо не нужно, `cygwin` не нужен.
 
-На машине со студией упаковать:
+Вручную на Linux:
 
-```powershell
-Compress-Archive -Path `
-  'C:\TelinkIoTStudio\RDS\V3.2.3\toolchains\nds32le-elf-mculib-v5f', `
-  'C:\TelinkIoTStudio\RDS\V3.2.3\cygwin\bin' `
-  -DestinationPath toolchain-nds32le-v5f-gcc74-win.zip
-# В архиве должно быть два каталога верхнего уровня:
-#   nds32le-elf-mculib-v5f/...  (+ riscv32-elf-gcc.exe 7.4.0)
-#   cygwin/bin/...              (+ cygwin1.dll, sh.exe)
+```bash
+wget -q https://github.com/andestech/Andes-Development-Kit/releases/download/ast-v3_2_3-release-linux/nds32le-elf-mculib-v5f.txz
+sudo tar -xf nds32le-elf-mculib-v5f.txz -C /opt
+git clone https://github.com/telink-semi/telink_zigbee_sdk sdk
+cd sdk && git checkout $(cat ../sdk-ref.txt) && cd ..
+python scripts/apply-overlay.py overlay/tl_zigbee_sdk sdk/tl_zigbee_sdk
+cmake -G "Unix Makefiles" -DTOOLCHAIN_PATH=/opt/nds32le-elf-mculib-v5f -S sdk/tl_zigbee_sdk -B sdk/tl_zigbee_sdk/cmake_build
+cmake --build sdk/tl_zigbee_sdk/cmake_build --target sampleGW_b91 -j$(nproc)
+python tools/mk_yandex2.py sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91.bin
 ```
 
-Затем в новом GitHub-репо:
-
-```powershell
-gh repo create <user>/yandex-gw --private --source=. --push
-gh release create toolchain --title "toolchain" --notes "compiler bundle"
-gh release upload toolchain toolchain-nds32le-v5f-gcc74-win.zip
-gh workflow run build
-```
+На Windows локально по-прежнему можно собирать с Telink IoT Studio
+(`RDS V3.2.3\toolchains\nds32le-elf-mculib-v5f` + `cygwin\bin` в `PATH` и
+`cmake -G "MinGW Makefiles"`), но в CI это не используется.
 
 ## Проверка результата
 

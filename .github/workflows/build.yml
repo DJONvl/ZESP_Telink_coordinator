@@ -11,20 +11,14 @@ on:
         required: false
 
 env:
-  # Pinned upstream commit (master tip at the time the local tree was cloned).
-  # If apply-overlay fails with "expected stock file missing", update this to a
-  # newer commit and re-run. See sdk-ref.txt.
   SDK_REF: ${{ inputs.sdk_ref || '09fa2c3483b3aa2f0a6f2e2cc7e267cd6f1f9277' }}
   SDK_URL: https://github.com/telink-semi/telink_zigbee_sdk
-  # Toolchain bundle uploaded once as a Release asset in THIS repo
-  # (see README: how to zip it from a Telink IoT Studio install).
-  TOOLCHAIN_ASSET: toolchain-nds32le-v5f-gcc74-win.zip
-  TOOLCHAIN_TAG: toolchain
-  TOOLCHAIN_DIR: C:\telink-toolchain
+  TOOLCHAIN_URL: https://github.com/andestech/Andes-Development-Kit/releases/download/ast-v3_2_3-release-linux/nds32le-elf-mculib-v5f.txz
+  TOOLCHAIN_DIR: /opt/nds32le-elf-mculib-v5f
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout overlay repo
         uses: actions/checkout@v4
@@ -35,56 +29,49 @@ jobs:
           python-version: "3.13"
 
       - name: Clone upstream SDK at pinned ref
-        shell: powershell
         run: |
-          git clone $env:SDK_URL sdk
+          git clone "$SDK_URL" sdk
           cd sdk
-          git checkout $env:SDK_REF
+          git checkout "$SDK_REF"
 
       - name: Apply overlay
-        shell: powershell
         run: |
           python scripts/apply-overlay.py overlay/tl_zigbee_sdk sdk/tl_zigbee_sdk
 
-      - name: Fetch toolchain bundle from Release
-        shell: powershell
-        run: |
-          New-Item -ItemType Directory -Force -Path $env:TOOLCHAIN_DIR | Out-Null
-          gh release download $env:TOOLCHAIN_TAG --pattern $env:TOOLCHAIN_ASSET --dir $env:TOOLCHAIN_DIR --clobber
-          Expand-Archive -LiteralPath (Join-Path $env:TOOLCHAIN_DIR $env:TOOLCHAIN_ASSET) -DestinationPath $env:TOOLCHAIN_DIR -Force
-          Get-ChildItem $env:TOOLCHAIN_DIR -Recurse -Depth 2 | Select-Object FullName
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Cache toolchain
+        uses: actions/cache@v4
+        with:
+          path: /opt/nds32le-elf-mculib-v5f
+          key: nds32le-v5f-gcc74-ast-v3_2_3
 
-      - name: Install MinGW make
-        shell: powershell
+      - name: Fetch Linux toolchain (Andes V3.2.3 / GCC 7.4, same as Telink RDS V3.2.3)
         run: |
-          choco install mingw -y --no-progress
-          mingw32-make --version
+          if [ -x "$TOOLCHAIN_DIR/bin/riscv32-elf-gcc" ]; then
+            echo "toolchain cached"
+          else
+            wget -q "$TOOLCHAIN_URL" -O /tmp/nds32le-elf-mculib-v5f.txz
+            sudo mkdir -p /opt
+            sudo tar -xf /tmp/nds32le-elf-mculib-v5f.txz -C /opt
+            rm /tmp/nds32le-elf-mculib-v5f.txz
+          fi
+          "$TOOLCHAIN_DIR/bin/riscv32-elf-gcc" --version
 
-      - name: Configure (CMake, MinGW Makefiles)
-        shell: powershell
+      - name: Configure (CMake, Unix Makefiles)
         run: |
-          $tc = Join-Path $env:TOOLCHAIN_DIR "nds32le-elf-mculib-v5f"
-          cmake -G "MinGW Makefiles" `
-            -DTOOLCHAIN_PATH="$tc" `
-            -DCMAKE_MAKE_PROGRAM="C:/ProgramData/chocolatey/bin/mingw32-make.exe" `
-            -S sdk/tl_zigbee_sdk `
+          cmake -G "Unix Makefiles" \
+            -DTOOLCHAIN_PATH="$TOOLCHAIN_DIR" \
+            -S sdk/tl_zigbee_sdk \
             -B sdk/tl_zigbee_sdk/cmake_build
 
       - name: Build sampleGW_b91
-        shell: powershell
         run: |
-          $tcBin = Join-Path $env:TOOLCHAIN_DIR "nds32le-elf-mculib-v5f/bin"
-          $cygBin = Join-Path $env:TOOLCHAIN_DIR "cygwin/bin"
-          $env:Path = "$cygBin;$tcBin;" + $env:Path
-          cmake --build sdk/tl_zigbee_sdk/cmake_build --target sampleGW_b91 -j8
+          cmake --build sdk/tl_zigbee_sdk/cmake_build --target sampleGW_b91 -j$(nproc)
 
       - name: Pack .ybl
-        shell: powershell
         run: |
           python tools/mk_yandex2.py sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91.bin sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91_yandex2.ybl
-          Get-Item sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91.bin, sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91_yandex2.ybl | Select-Object Name, Length
+          ls -lh sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91.bin sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91_yandex2.ybl
+          cat sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91.map | head -20 || true
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
