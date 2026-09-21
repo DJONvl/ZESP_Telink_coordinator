@@ -18,6 +18,7 @@ from pathlib import Path
 # at the pinned SDK_REF — so it is not listed here.
 EXPECTED_EXISTING = {
     "apps/common/comm_cfg.h",
+    "apps/zigbee/sampleGW/app_cfg.h",
     "apps/zigbee/sampleGW/sampleGateway.c",
     "apps/zigbee/sampleGW/app_ui.c",
     "apps/zigbee/sampleGW/board_b91_dongle.h",
