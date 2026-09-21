@@ -2,6 +2,7 @@ name: build sampleGW_b91
 
 on:
   push:
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -9,6 +10,13 @@ on:
         description: "telink_zigbee_sdk commit to build against"
         default: "09fa2c3483b3aa2f0a6f2e2cc7e267cd6f1f9277"
         required: false
+      release:
+        description: "Create GitHub Release with .ybl after build"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
 
 env:
   SDK_REF: ${{ inputs.sdk_ref || '09fa2c3483b3aa2f0a6f2e2cc7e267cd6f1f9277' }}
@@ -81,3 +89,14 @@ jobs:
             sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91.bin
             sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91_yandex2.ybl
             sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91.map
+
+      - name: Publish Release (tag v* or manual release=true)
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release == true
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91_yandex2.ybl
+            sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91.bin
+            sdk/tl_zigbee_sdk/cmake_build/sampleGW_b91.map
+          generate_release_notes: true
+          fail_on_unmatched_files: true
